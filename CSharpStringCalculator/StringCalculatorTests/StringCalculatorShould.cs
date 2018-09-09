@@ -1,5 +1,10 @@
-﻿using CSharpStringCalculator;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
+
+// ReSharper disable PossibleMultipleEnumeration
 
 namespace StringCalculatorTests
 {
@@ -30,10 +35,85 @@ namespace StringCalculatorTests
         [TestCase("1,2", 3)]
         [TestCase("1\n1", 2)]
         [TestCase("//;\n1;1", 2)]
+        [TestCase("1,1001", 1)]
+        [TestCase("1,1000", 1001)]
+        //[TestCase("//***\n1***1", 100)]
         public void SumNumbersCorrectly(string numbersToAdd, int expectedSum)
         {
-            var sumOfNumbers = StringCalculator.Sum(numbersToAdd);
-            Assert.That(sumOfNumbers, Is.EqualTo(expectedSum));
+            var sumResult = StringCalculator.Sum(numbersToAdd);
+            Assert.That(sumResult, Is.EqualTo(expectedSum));
+        }
+
+        [TestCase("-1", "-1")]
+        [TestCase("-1,1", "-1")]
+        [TestCase("-1,-1", "-1,-1")]
+        [TestCase("//;\n1;-1", "-1")]
+        [TestCase("//;\n1;-1;-2", "-1,-2")]
+        public void ThrowNegativesNotAllowedExceptionWhenTryingToSumNegatives(string numbersWithIncorrectFormat, string numbersInExceptionMessage)
+        {
+            var expectedMessage = "Negatives not allowed: " + numbersInExceptionMessage;
+
+            var exception = Assert.Throws<ArgumentException>(() => StringCalculator.Sum(numbersWithIncorrectFormat));
+            Assert.That(exception.Message, Is.EqualTo(expectedMessage));
+        }
+    }
+
+    public class StringCalculator
+    {
+        public static int Sum(string numbersToAdd)
+        {
+            if (string.IsNullOrEmpty(numbersToAdd))
+            {
+                return 0;
+            }
+
+            var separators = new List<char> {',', '\n'};
+            if (numbersToAdd.StartsWith("//"))
+            {
+                separators.Add(numbersToAdd[2]);
+                numbersToAdd = numbersToAdd.Substring(4);
+            }
+
+            var listOfNumbers = numbersToAdd.Split(separators.ToArray());
+
+            var badNumbers = listOfNumbers.Where(x => x.Contains("-"));
+            if (badNumbers.Any())
+            {
+                throw new ArgumentException("Negatives not allowed: " + string.Join(",", badNumbers));
+            }
+
+            return listOfNumbers.Select(int.Parse).Where(x => x < 1001).Sum();
+        }
+
+        private static void ThrowArgumentExceptionIfThereAreNegativeNumbers(IEnumerable<string> listOfNumbers)
+        {
+            var badNumbers = listOfNumbers.Where(x => x.Contains("-"));
+            if (badNumbers.Any())
+            {
+                throw new ArgumentException("Negatives not allowed: " + string.Join(",", badNumbers));
+            }
+        }
+
+        private static string TrimSeparatorFromString(string numbersToAdd)
+        {
+            if (numbersToAdd.StartsWith("//"))
+            {
+                return numbersToAdd.Substring(4);
+            }
+
+            return numbersToAdd;
+        }
+
+        private static List<char> ParseStringForSeparator(string numbersToAdd)
+        {
+            var separators = new List<char> {',', '\n'};
+
+            if (numbersToAdd.StartsWith("//"))
+            {
+                separators.Add(numbersToAdd[2]);
+            }
+
+            return separators;
         }
     }
 }
