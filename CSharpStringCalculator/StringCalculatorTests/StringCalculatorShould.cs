@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 
@@ -37,7 +39,9 @@ namespace StringCalculatorTests
         [TestCase("//;\n1;1", 2)]
         [TestCase("1,1001", 1)]
         [TestCase("1,1000", 1001)]
-        //[TestCase("//***\n1***1", 100)]
+        [TestCase("//[***]\n1***1", 2)]
+        [TestCase("//[***]\n1***1,1", 3)]
+        [TestCase("//[*][%]\n1*1%1", 3)]
         public void SumNumbersCorrectly(string numbersToAdd, int expectedSum)
         {
             var sumResult = StringCalculator.Sum(numbersToAdd);
@@ -67,22 +71,16 @@ namespace StringCalculatorTests
                 return 0;
             }
 
-            var separators = new List<char> {',', '\n'};
-            if (numbersToAdd.StartsWith("//"))
-            {
-                separators.Add(numbersToAdd[2]);
-                numbersToAdd = numbersToAdd.Substring(4);
-            }
+            var pattern = CreateSeparatorPattern(numbersToAdd);
+            var trimmedNumbers = TrimSeparatorFromString(numbersToAdd);
+            var listOfNumbers = Regex.Split(trimmedNumbers, pattern);
 
-            var listOfNumbers = numbersToAdd.Split(separators.ToArray());
+            ThrowArgumentExceptionIfThereAreNegativeNumbers(listOfNumbers);
 
-            var badNumbers = listOfNumbers.Where(x => x.Contains("-"));
-            if (badNumbers.Any())
-            {
-                throw new ArgumentException("Negatives not allowed: " + string.Join(",", badNumbers));
-            }
-
-            return listOfNumbers.Select(int.Parse).Where(x => x < 1001).Sum();
+            return listOfNumbers
+                .Select(int.Parse)
+                .Where(x => x < 1001)
+                .Sum();
         }
 
         private static void ThrowArgumentExceptionIfThereAreNegativeNumbers(IEnumerable<string> listOfNumbers)
@@ -98,22 +96,23 @@ namespace StringCalculatorTests
         {
             if (numbersToAdd.StartsWith("//"))
             {
-                return numbersToAdd.Substring(4);
+                var index = numbersToAdd.IndexOf('\n');
+                numbersToAdd = numbersToAdd.Substring(index + 1);
             }
 
             return numbersToAdd;
         }
 
-        private static List<char> ParseStringForSeparator(string numbersToAdd)
+        private static string CreateSeparatorPattern(string numbersToAdd)
         {
-            var separators = new List<char> {',', '\n'};
-
+            var pattern = "[,\n]+";
             if (numbersToAdd.StartsWith("//"))
             {
-                separators.Add(numbersToAdd[2]);
+                var separator = numbersToAdd.TrimStart('/').Split('\n')[0].Replace("[", "").Replace("]", "");
+                pattern = $"{pattern}|[{separator}]+";
             }
 
-            return separators;
+            return pattern;
         }
     }
 }
