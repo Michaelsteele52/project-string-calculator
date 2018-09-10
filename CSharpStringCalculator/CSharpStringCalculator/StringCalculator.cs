@@ -40,7 +40,7 @@ namespace CSharpStringCalculator
             if (numbersToAdd.StartsWith("//"))
             {
                 var index = numbersToAdd.IndexOf('\n');
-                numbersToAdd = numbersToAdd.Substring(index + 1);
+                return numbersToAdd.Substring(index + 1);
             }
 
             return numbersToAdd;
@@ -51,8 +51,12 @@ namespace CSharpStringCalculator
             var pattern = "[,\n]+";
             if (numbersToAdd.StartsWith("//"))
             {
-                var separator = numbersToAdd.TrimStart('/').Split('\n')[0].Replace("[", "").Replace("]", "");
-                pattern = $"{pattern}|[{separator}]+";
+                var separator = numbersToAdd
+                    .TrimStart('/')
+                    .Split('\n')[0]
+                    .Replace("[", "")
+                    .Replace("]", "");
+                return $"{pattern}|[{separator}]+";
             }
 
             return pattern;
